@@ -1,0 +1,24 @@
+spawn ssh root@192.168.3.229
+root@192.168.3.229's password: 
+[32m[1mroot@csrb0[m [34m[1m~ #[m 
+###CHECKPOINT SSH-MASTER
+uptime
+ 12:20:45 up 2 days, 20:44,  3 users,  load average: 4.00, 3.58, 3.52
+[32m[1mroot@csrb0[m [34m[1m~ #[m rm ~/.ssh/known_hosts
+[32m[1mroot@csrb0[m [34m[1m~ #[m ssh slot6
+
+Host 'slot6' is not in the trusted hosts file.
+(fingerprint md5 62:24:84:c8:ca:d9:2a:a3:c3:64:31:9a:aa:bc:34:62)
+Do you want to continue connecting? (y/n) yes
+root@slot6's password: 
+###CHECKPOINT SSH-SLOT6
+
+[32m[1mroot@cnob6[m [34m[1m~ #[m uptime
+ 12:20:44 up 2 days, 20:44,  2 users,  load average: 3.00, 3.01, 3.05
+[32m[1mroot@cnob6[m [34m[1m~ #[m getprop mfg.shared.picoSerialNumber
+"2021-002017"
+
+
+[32m[1mroot@cnob6[m [34m[1m~ #[m [Kexit
+logout
+[32m[1mroot@csrb0[m [34m[1m~ #[m 

@@ -1,0 +1,37 @@
+#!/bin/bash
+pwrscript=${pwrscript:-UU.pl}
+pwraddr=${pwraddr:-192.168.3.226}
+pwruser=${pwruser:-admin}
+pwrpswd=${pwrpswd:-1234}
+#pwrplug=${pwrplug:-0}
+
+rsp=$(which $pwrscript 2>&1)
+if [ $? -ne 0 ]; then
+  echo "err: could not locate power controller script [$pwrscript]" >&2
+  #echo $rsp >&2
+  exit 1
+fi
+
+if [ "$1" = "" ]; then
+  echo "Using following for power strip controller:"
+  echo "pwraddr [$pwraddr]"
+  echo "pwruser [$pwruser]"
+  echo "pwrpswd [$pwrpswd]"
+  echo "pwrplug [$pwrplug]"
+  #$pwrscript $pwraddr $pwruser:$pwrpswd status && exit
+  #echo "usage: powerctrl <[n]{on|off|pulse|status|power|interact}>"
+  echo "usage: powerctrl <[n]{on|off|pulse|status}>"
+  exit
+fi
+
+#echo $pwrscript $pwraddr $pwruser:$pwrpswd $@
+
+if [ $# -eq 1 ] && [ "$1" = "on" -o "$1" = "ON" -o "$1" = "off" -o "$1" = "OFF" ] && [ "$pwrplug" != "" ]; then
+  $pwrscript $pwraddr $pwruser:$pwrpswd ${pwrplug}${1} 2>/dev/null
+else
+  $pwrscript $pwraddr $pwruser:$pwrpswd $@ 2>/dev/null
+fi
+
+err=$?
+[ $err -ne 0 ] && echo "err: [$err] error returned from script [$pwrscript]" >&2 && exit $err
+exit 0
