@@ -52,12 +52,47 @@ proc displayDebugInNewLine {content} {
   displayDebug $content
 }
 
-p
+
 proc displayDebugArray {arrayInput} {
   upvar $arrayInput arrayContent
   displayDebug ""
   parray arrayContent
   parrayToFile arrayContent
+}
+
+proc failSlot {slot} {
+	global failCount
+	set failCount($slot) [expr $failCount($slot) + 1]
+}
+
+proc failVixs {slot vixs} {
+	global failCount
+	set index "$slot,$vixs"
+	set failCount($index) [expr $failCount($index) + 1]
+}
+
+proc displayCurrentProcess {} {
+	global failCount
+	global listSerialNumber
+	global cnob_slots
+	global vixs_ids
+
+	displayDebug "### FINAL RESULT"
+
+  foreach slot $cnob_slots {
+  	if {$failCount($slot) > 0} {
+      displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slots): $failCount($slot) fails"
+  	}
+  }
+
+  foreach slot $cnob_slots {
+    foreach vixs_id $vixs_ids {
+	    set index "$slot,$vixs_id"
+	    if {$failCount($index)} {
+        displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slots)-VIXS$vixs_id: $failCount($slot) fails"
+	    }
+    }
+  }
 }
 
 # this function to control how long will the test run
@@ -66,6 +101,9 @@ proc checkStillRunning {} {
   global startTime
   global totalRunTime
   global cycleCount
+  if { $cycleCount > 0 } {
+  	[displayCurrentProcess]
+  }
 
   if { $options(cycle) > 0 } {
 	  if {$cycleCount > $options(cycle)} {
@@ -79,7 +117,6 @@ proc checkStillRunning {} {
     }
   }
   incr cycleCount
-  displayDebug "Start running cycle: $cycleCount"
   return 1
 }
 
@@ -105,8 +142,9 @@ set port ""
 set logFile "error.log"
 
 set parameters {
-  {time.arg 4   "Number of hour to run. Time check after finish cycle"}
-	{cycle.arg 0   "Number of cycle to run, if cycle is 0 we use time"}
+  #{time.arg 4   "Number of hour to run. Time check after finish cycle"}
+	#{cycle.arg 0   "Number of cycle to run, if cycle is 0 we use time"}
+	{device.arg "ntsc"  "Type of device for test"}
 	{id.arg "229"  "Chassy ID get from last IP number. Ex: 192.168.3.X"}
 	{prefix.arg "192.168.3"  "Base ip for Chassy."}
 	{startSlot.arg 1   "It will run test for slot from start -> end"}
@@ -136,6 +174,9 @@ if { [string length $options(id)] == 0 } {
 
 array set listSerialNumber {}
 array set failCount {}
+#board configuration
+set numberOfPowerCycle 15
+set numberOfRetest 2
 
 #Init array storage for serial number
 for {set i 1} {$i < 16} {incr i 1} {
@@ -159,6 +200,7 @@ for {set i 0} {$i < $options(vixs) } {incr i 1} {
 foreach slot $cnob_slots {
   set failCount($slot) 0
   foreach vixs_id $vixs_ids {
-    set failCount("$slot,$vixs_id") 0
+    set failCount($slot,$vixs_id) 0
   }
 }
+

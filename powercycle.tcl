@@ -4,8 +4,8 @@ set send_slow { 1 .010 }
 log_user 0
 exp_internal 0
 
-#set cnob_slots [list 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-set cnob_slots [list 6]
+set cnob_slots [list 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+#set cnob_slots [list 6]
 set vixs_ids   [list 0 1 2 3 4 5] 
 
 set pauseonfail nottrue
@@ -37,7 +37,6 @@ set linux_login "clifford login:"
 set uboot_prompt "Clifford U-Boot >"
 set linux_prompt "root@.*#"
 set prompt "#"
-
 
 set cmd {}
 
@@ -161,25 +160,34 @@ proc boottest {} {
   expect -re "$linux_prompt" return
 }
 
-displayDebug "###TESTSTART [tstamp]"
-power off
-sleep 2
+proc powerCycleTest {} {
+	set powerCycleCount 0
+	set powerCycleTime 60
+	power off
+	sleep 2
+	set powerCycleCount [expr $powerCycleCount + 1]
+	displayDebug "###WAITING $powerCycleTime seconds"
+	power on
+	sleep $powerCycleTime
+}
 
-set pass 0
-set fail 0
-set test 0
-
-while { [checkStillRunning] != 0 } {
+proc powerBootTest {} {
+	global test
+	global boot_time
+	global offtime
 
   set test [expr $test + 1]
-  power on
-  displayDebug "###POWERON [tstamp]"
-  displayDebug "###TRIAL $test"
+  power off
+  sleep 2
+	power on
+	displayDebug "###POWERON"
+	displayDebug "###TRIAL $test"
 
-  displayDebug "###WAITING $boot_time seconds"
-  sleep $boot_time
-  displayDebug "###CHECKING [tstamp]"
-  boottest
+	displayDebug "###WAITING $boot_time seconds"
+	sleep $boot_time
+	displayDebug "###CHECKING"
+
+	boottest
 
   displayDebug "###"
   power off
@@ -191,6 +199,32 @@ while { [checkStillRunning] != 0 } {
   displayDebug "###"
   sleep 1
   log_user 1
+}
+
+
+displayDebug "###TESTSTART [tstamp]"
+
+set pass 0
+set fail 0
+set test 0
+
+#power on
+#displayDebug "###POWERON [tstamp]"
+#displayDebug "###TRIAL $test"
+
+#displayDebug "###WAITING $boot_time seconds"
+#sleep $boot_time
+#displayDebug "###CHECKING [tstamp]"
+powerBootTest
+
+
+displayDebug "###POWERCYCLE [tstamp]"
+for {set i 0} { $i < $numberOfPowerCycle } {incr i} {
+	powerCycleTest
+}
+
+for {set i 0} { $i < $numberOfRetest } {incr i} {
+	powerBootTest
 }
 
 power off
