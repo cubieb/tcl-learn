@@ -4,8 +4,8 @@ set send_slow { 1 .010 }
 log_user 0
 exp_internal 0
 
-#set ncob_slots [list 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-set ncob_slots [list 6]
+#set cnob_slots [list 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+set cnob_slots [list 6]
 set vixs_ids   [list 0 1 2 3 4 5] 
 
 set pauseonfail nottrue
@@ -38,9 +38,6 @@ set uboot_prompt "Clifford U-Boot >"
 set linux_prompt "root@.*#"
 set prompt "#"
 
-#include tcl for extra function
-#include it here to overwrite port if need
-source "tcl.sh"
 
 set cmd {}
 
@@ -65,6 +62,9 @@ proc power {state} {
   exec powerctrl [set pwrswitch][set state]
 }
 
+#include tcl for extra function
+#include it here to overwrite port if need, and have top proc 
+source "tcl.sh"
 
 proc boottest {} {
   #global uboot_login
@@ -79,7 +79,7 @@ proc boottest {} {
   global port
   #global prompt
   global linux_prompt
-  global ncob_slots
+  global cnob_slots
   global vixs_ids
 
   set ipaddr [lindex $port 0]
@@ -89,7 +89,7 @@ proc boottest {} {
   set timeout 10
   spawn ssh root@$ipaddr
   expect {
-    timeout          { puts "\n###FAIL SSH-MASTER"
+    timeout          { displayDebugInNewLine "###FAIL SSH-MASTER"
                        pausecheck
                        return 
                      }
@@ -98,24 +98,24 @@ proc boottest {} {
     "continue connecting" { send "yes\r"
                             exp_continue
                      }
-    "Connection refused" { puts "\n###FAIL SSH-MASTER"
+    "Connection refused" { displayDebugInNewLine "###FAIL SSH-MASTER"
                        pausecheck
                        return 
                      }
   }
 
   expect -re "$linux_prompt"
-  puts "\n###CHECKPOINT SSH-MASTER"
+  displayDebugInNewLine "###CHECKPOINT SSH-MASTER"
   send "uptime\r"
   expect -re "$linux_prompt"
   send "rm ~/.ssh/known_hosts\r"
   expect -re "$linux_prompt"
 
-  foreach slot $ncob_slots {
+  foreach slot $cnob_slots {
 
     send "ssh slot$slot\r"
     expect {
-      timeout          { puts "\n###FAIL SSH-SLOT$slot"
+      timeout          { displayDebugInNewLine "###FAIL SSH-SLOT$slot-SN-$listSerialNumber($slots)"
                          expect -re "$linux_prompt"
                          pausecheck
                          continue
@@ -128,7 +128,7 @@ proc boottest {} {
                        }
     }
 
-    puts "\n###CHECKPOINT SSH-SLOT$slot"
+    displayDebugInNewLine "###CHECKPOINT SSH-SLOT$slot"
     expect -re "$linux_prompt"
     send "uptime\r"
     expect -re "$linux_prompt"
@@ -138,12 +138,12 @@ proc boottest {} {
     foreach v $vixs_ids {
       send "ping -f -c 10 -w 5 vixs$v\r"
       expect {
-                   timeout { puts "\n###FAIL SLOT$slot-VIXS$v"
+                   timeout { displayDebugInNewLine "###FAIL SLOT$slot-SN-$listSerialNumber($slots)-VIXS$v"
                              pausecheck
                            }
         " 0% packet loss"  { #sleep 1
                              #expect "*"
-                             puts "\n###CHECKPOINT SLOT$slot-VIXS$v"
+                             displayDebugInNewLine "###CHECKPOINT SLOT$slot-$listSerialNumber($slots)-VIXS$v"
                            }
       }
 
@@ -161,7 +161,7 @@ proc boottest {} {
   expect -re "$linux_prompt" return
 }
 
-puts "###TESTSTART [tstamp]"
+displayDebug "###TESTSTART [tstamp]"
 power off
 sleep 2
 
@@ -173,25 +173,24 @@ while { [checkStillRunning] != 0 } {
 
   set test [expr $test + 1]
   power on
-  puts "###POWERON [tstamp]"
-  puts "###TRIAL $test"
+  displayDebug "###POWERON [tstamp]"
+  displayDebug "###TRIAL $test"
 
-  puts "###WAITING $boot_time seconds"
+  displayDebug "###WAITING $boot_time seconds"
   sleep $boot_time
-  puts "###CHECKING [tstamp]"
+  displayDebug "###CHECKING [tstamp]"
   boottest
 
-  puts "###"
+  displayDebug "###"
   power off
-  puts "###POWEROFF [tstamp]"
+  displayDebug "###POWEROFF [tstamp]"
 
   sleep $offtime
   log_user 0
   expect *
-  puts "###"
+  displayDebug "###"
   sleep 1
   log_user 1
- 
 }
 
 power off
