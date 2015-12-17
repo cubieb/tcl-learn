@@ -76,17 +76,26 @@ proc displayCurrentProcess {force} {
 	global listSerialNumber
 	global cnob_slots
 	global vixs_ids
+ 
 
   foreach slot $cnob_slots {
-  	if {$failCount($slot) > 0 || $force} {
-      displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot): $failCount($slot) fails"
+  	if {$failCount($slot) > 0} {
+          displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot): $failCount($slot) fails"
   	}
     foreach vixs_id $vixs_ids {
 	    set index "$slot,$vixs_id"
 	    if {$failCount($index)} {
-        displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot)-VIXS$vixs_id: $failCount($slot) fails"
+               displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot)-VIXS$vixs_id: $failCount($slot) fails"
 	    }
     }
+  }
+
+  foreach slot $cnob_slots {
+  	if {$failCount($slot) > 0 } {
+          displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot): FAIL"
+  	} else {
+          displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot): PASS"
+	}
   }
 }
 

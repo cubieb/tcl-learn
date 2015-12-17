@@ -61,6 +61,10 @@ proc power {state} {
   exec powerctrl [set pwrswitch][set state]
 }
 
+proc removeSSH {ipaddr} {
+  exec ssh-keygen -f "/home/xdsuser/.ssh/known_hosts" -R $ipaddr
+}
+
 #include tcl for extra function
 #include it here to overwrite port if need, and have top proc 
 source "general.tcl"
@@ -83,6 +87,8 @@ proc boottest {} {
 
   set ipaddr [lindex $port 0]
   set ipport [lindex $port 1]
+  catch {removeSSH $ipaddr}
+  sleep 2
 
   log_user 1
   set timeout 10
@@ -222,18 +228,18 @@ set test 0
 #displayDebug "###WAITING $boot_time seconds"
 #sleep $boot_time
 #displayDebug "###CHECKING [tstamp]"
-displayCurrentProcess 0
+#displayCurrentProcess 0
 powerBootTest
 
 
-displayCurrentProcess 0
+#displayCurrentProcess 0
 displayDebug "###POWERCYCLE [tstamp]"
 for {set i 0} { $i < $numberOfPowerCycle } {incr i} {
 	powerCycleTest
 }
 
 for {set i 0} { $i < $numberOfRetest } {incr i} {
-	displayCurrentProcess 0
+	#displayCurrentProcess 0
 	powerBootTest
 }
 
