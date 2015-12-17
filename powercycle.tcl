@@ -4,14 +4,14 @@ set send_slow { 1 .010 }
 log_user 0
 exp_internal 0
 
-set cnob_slots [list 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+set cnob_slots [list 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
 #set cnob_slots [list 6]
 set vixs_ids   [list 0 1 2 3 4 5] 
 
 set pauseonfail nottrue
 
-set offtime 10
-set pwrswitch 8
+#set offtime 10
+#set pwrswitch 2
 #the following are set in external environment
 #set pwraddr 192.168.3.226
 #set pwruser admin
@@ -21,7 +21,7 @@ set pwrswitch 8
 set port "192.168.3.229"
 set uboot_timeout  20
 set linux_timeout 180
-set boot_time     1200
+#set boot_time     1200
 set username "root"
 #set password "BcJFzhB9Cnyr"
 set password "5VN7DrD3"
@@ -111,62 +111,69 @@ proc boottest {} {
   expect -re "$linux_prompt"
 
   foreach slot $cnob_slots {
+	  set isSuccess 0
+		send "ssh slot$slot\r"
+		expect {
+			timeout { displayDebugInNewLine "###FAIL SSH-SLOT$slot-SN-$listSerialNumber($slot)"
+						 failSlot $slot
+						 expect -re "$linux_prompt"
+						 pausecheck
+						 continue
+			}
+			"continue connecting" { 
+				displayDebug "Accept Connection"
+   			displayDebug $expect_out(buffer)
+				send "yes\r"
+				exp_continue
+			}
+			"password:"      {
+				displayDebug "Input Password"
+   			displayDebug $expect_out(buffer)
+				sleep 1
+				send "$password\r" 
+			}
+		}
 
-    send "ssh slot$slot\r"
-    expect {
-      timeout          { displayDebugInNewLine "###FAIL SSH-SLOT$slot-SN-$listSerialNumber($slots)"
-                         expect -re "$linux_prompt"
-                         pausecheck
-                         continue
-                       }
-      "continue connecting" { send "yes\r"
-                              exp_continue
-                            }
-      "password:"      { #sleep 1
-                         send "$password\r" 
-                       }
-    }
+		expect -re "$linux_prompt"
+		displayDebugInNewLine "###CHECKPOINT SSH-SLOT$slot"
+		send "uptime\r"
+		expect -re "$linux_prompt"
 
-    displayDebugInNewLine "###CHECKPOINT SSH-SLOT$slot"
-    expect -re "$linux_prompt"
-    send "uptime\r"
-    expect -re "$linux_prompt"
+		updateSlotSerialNumber $spawn_id $slot		 
 
-    updateSlotSerialNumber $spawn_id $slot		 
+		foreach v $vixs_ids {
+			send "ping -f -c 10 -w 5 vixs$v\r"
+			expect {
+				timeout { displayDebugInNewLine "###FAIL SLOT$slot-SN-$listSerialNumber($slot)-VIXS$v"
+							fail $lost $v
+							pausecheck
+				}
+				" 0% packet loss"  { #sleep 1
+				#expect "*"
+					displayDebugInNewLine "###CHECKPOINT SLOT$slot-$listSerialNumber($slot)-VIXS$v"
+				}
+			}
 
-    foreach v $vixs_ids {
-      send "ping -f -c 10 -w 5 vixs$v\r"
-      expect {
-                   timeout { displayDebugInNewLine "###FAIL SLOT$slot-SN-$listSerialNumber($slots)-VIXS$v"
-                             pausecheck
-                           }
-        " 0% packet loss"  { #sleep 1
-                             #expect "*"
-                             displayDebugInNewLine "###CHECKPOINT SLOT$slot-$listSerialNumber($slots)-VIXS$v"
-                           }
-      }
+			expect -re "$linux_prompt"
 
-      expect -re "$linux_prompt"
+		}
 
-    }
+		send "exit\r"
+		expect -re "$linux_prompt"
+		sleep 10
+	}
 
-    set timeout 10
-
-    send "exit\r"
-    expect -re "$linux_prompt"
-  }
-
-  send "exit\r"
-  expect -re "$linux_prompt" return
+	send "exit\r"
+	expect -re "$linux_prompt" return
 }
 
 proc powerCycleTest {} {
-	set powerCycleCount 0
-	set powerCycleTime 60
+	global powerCycleCount 
+	global powerCycleTime 
 	power off
 	sleep 2
 	set powerCycleCount [expr $powerCycleCount + 1]
-	displayDebug "###WAITING $powerCycleTime seconds"
+	displayDebug "###WAITING AT POWER CYCLES $powerCycleCount , FOR $powerCycleTime seconds"
 	power on
 	sleep $powerCycleTime
 }
@@ -176,9 +183,9 @@ proc powerBootTest {} {
 	global boot_time
 	global offtime
 
-  set test [expr $test + 1]
-  power off
-  sleep 2
+	set test [expr $test + 1]
+	power off
+	sleep 2
 	power on
 	displayDebug "###POWERON"
 	displayDebug "###TRIAL $test"
@@ -189,16 +196,16 @@ proc powerBootTest {} {
 
 	boottest
 
-  displayDebug "###"
-  power off
-  displayDebug "###POWEROFF [tstamp]"
+	displayDebug "###"
+	power off
+	displayDebug "###POWEROFF [tstamp]"
 
-  sleep $offtime
-  log_user 0
-  expect *
-  displayDebug "###"
-  sleep 1
-  log_user 1
+	sleep $offtime
+	log_user 0
+	expect *
+	displayDebug "###"
+	sleep 1
+	log_user 1
 }
 
 
@@ -215,17 +222,23 @@ set test 0
 #displayDebug "###WAITING $boot_time seconds"
 #sleep $boot_time
 #displayDebug "###CHECKING [tstamp]"
+displayCurrentProcess 0
 powerBootTest
 
 
+displayCurrentProcess 0
 displayDebug "###POWERCYCLE [tstamp]"
 for {set i 0} { $i < $numberOfPowerCycle } {incr i} {
 	powerCycleTest
 }
 
 for {set i 0} { $i < $numberOfRetest } {incr i} {
+	displayCurrentProcess 0
 	powerBootTest
 }
+
+displayDebug "###FINAL RESULT!!!"
+displayCurrentProcess 1
 
 power off
 exit 0

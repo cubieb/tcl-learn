@@ -71,25 +71,20 @@ proc failVixs {slot vixs} {
 	set failCount($index) [expr $failCount($index) + 1]
 }
 
-proc displayCurrentProcess {} {
+proc displayCurrentProcess {force} {
 	global failCount
 	global listSerialNumber
 	global cnob_slots
 	global vixs_ids
 
-	displayDebug "### FINAL RESULT"
-
   foreach slot $cnob_slots {
-  	if {$failCount($slot) > 0} {
-      displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slots): $failCount($slot) fails"
+  	if {$failCount($slot) > 0 || $force} {
+      displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot): $failCount($slot) fails"
   	}
-  }
-
-  foreach slot $cnob_slots {
     foreach vixs_id $vixs_ids {
 	    set index "$slot,$vixs_id"
 	    if {$failCount($index)} {
-        displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slots)-VIXS$vixs_id: $failCount($slot) fails"
+        displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot)-VIXS$vixs_id: $failCount($slot) fails"
 	    }
     }
   }
@@ -102,7 +97,7 @@ proc checkStillRunning {} {
   global totalRunTime
   global cycleCount
   if { $cycleCount > 0 } {
-  	[displayCurrentProcess]
+  	displayCurrentProcess 0
   }
 
   if { $options(cycle) > 0 } {
@@ -135,21 +130,36 @@ proc updateSlotSerialNumber {spawn_id slotNumber} {
 }
 
 
+#basic configuration
 set startTime [clock seconds]
 set cycleCount 0
 set totalRunTime 0
 set port ""
 set logFile "error.log"
+array set listSerialNumber {}
+array set failCount {}
+#board configuration
+set pwrswitch 2
+set numberOfPowerCycle 15
+#set numberOfPowerCycle 15
+set offtime 10
+set boot_time     1200
+#set boot_time     360
+set numberOfRetest 2
+set powerCycleCount 0
+set powerCycleTime 60
 
+#{time.arg 4   "Number of hour to run. Time check after finish cycle"}
+#{cycle.arg 0   "Number of cycle to run, if cycle is 0 we use time"}
 set parameters {
-  #{time.arg 4   "Number of hour to run. Time check after finish cycle"}
-	#{cycle.arg 0   "Number of cycle to run, if cycle is 0 we use time"}
 	{device.arg "ntsc"  "Type of device for test"}
 	{id.arg "229"  "Chassy ID get from last IP number. Ex: 192.168.3.X"}
 	{prefix.arg "192.168.3"  "Base ip for Chassy."}
-	{startSlot.arg 1   "It will run test for slot from start -> end"}
+	{startSlot.arg 0   "It will run test for slot from start -> end"}
 	{endSlot.arg  15   "It will run test for slot from start -> end"}
+	{pwrSwitch.arg  2   "Power control switch "}
 	{vixs.arg "6"  "Number of vixs on each unit. "}
+	{version.arg "154"  "Firmware version for password"}
   {debug "Turn on debugging, default=off"}
 }
 
@@ -158,13 +168,39 @@ if {[catch {array set options [cmdline::getoptions ::argv $parameters $usage]}]}
   displayDebug [cmdline::usage $parameters $usage]
   exit
 } else {
-  set totalRunTime [expr {$options(time) * 60 * 60}]
+  #set totalRunTime [expr {$options(time) * 60 * 60}]
 	set port "$options(prefix).$options(id)"
   file mkdir "./log_$options(id)"
   set timeStamp [timestampForLog]
 	set logFile "./log_$options(id)/$timeStamp.log"
+	switch  $options(device) {
+		qam48 {
+			displayDebug "### QAM48 Test"
+			set options(vixs) 0
+			set boot_time     360
+		}
+		assy {
+			displayDebug "### ASSY Test"
+			set options(vixs) 4
+			set boot_time     1200
+		}
+		default {
+			displayDebug "### NTSC Test"
+		}
+	}
 
-  displayDebugArray options
+	switch  $options(version) {
+		154 {
+			set password "5VN7DrD3"
+		}
+		default {
+		  set password "BcJFzhB9Cnyr"
+		}
+	}
+
+	set pwrswitch $options(pwrSwitch)
+
+	displayDebugArray options
 }
 
 if { [string length $options(id)] == 0 } {
@@ -172,14 +208,9 @@ if { [string length $options(id)] == 0 } {
 	exit
 }
 
-array set listSerialNumber {}
-array set failCount {}
-#board configuration
-set numberOfPowerCycle 15
-set numberOfRetest 2
 
 #Init array storage for serial number
-for {set i 1} {$i < 16} {incr i 1} {
+for {set i 0} {$i < 16} {incr i 1} {
 	set listSerialNumber($i) ""
 } 
 
@@ -198,9 +229,9 @@ for {set i 0} {$i < $options(vixs) } {incr i 1} {
 
 
 foreach slot $cnob_slots {
-  set failCount($slot) 0
-  foreach vixs_id $vixs_ids {
-    set failCount($slot,$vixs_id) 0
-  }
+	set failCount($slot) 0
+	foreach vixs_id $vixs_ids {
+		set failCount($slot,$vixs_id) 0
+	}
 }
 
