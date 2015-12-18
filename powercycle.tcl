@@ -151,7 +151,7 @@ proc boottest {} {
 			send "ping -f -c 10 -w 5 vixs$v\r"
 			expect {
 				timeout { displayDebugInNewLine "###FAIL SLOT$slot-SN-$listSerialNumber($slot)-VIXS$v"
-							fail $lost $v
+							failVixs $slot $v
 							pausecheck
 				}
 				" 0% packet loss"  { #sleep 1
@@ -203,7 +203,7 @@ proc powerBootTest {} {
 	boottest
 
 	displayDebug "###"
-	power off
+	#power off
 	displayDebug "###POWEROFF [tstamp]"
 
 	sleep $offtime
@@ -246,5 +246,5 @@ for {set i 0} { $i < $numberOfRetest } {incr i} {
 displayDebug "###FINAL RESULT!!!"
 displayCurrentProcess 1
 
-power off
+#power off
 exit 0

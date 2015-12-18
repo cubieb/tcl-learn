@@ -73,25 +73,32 @@ proc failVixs {slot vixs} {
 
 proc displayCurrentProcess {force} {
 	global failCount
+	global failCountTotal
 	global listSerialNumber
 	global cnob_slots
 	global vixs_ids
  
 
+  displayDebug ""
+  displayDebug "########## DETAIL FAIL ##########"
   foreach slot $cnob_slots {
-  	if {$failCount($slot) > 0} {
+  	if {$failCount($slot) > 0 } {
           displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot): $failCount($slot) fails"
+          set failCountTotal($slot) [expr $failCountTotal($slot) + 1]
   	}
     foreach vixs_id $vixs_ids {
 	    set index "$slot,$vixs_id"
-	    if {$failCount($index)} {
-               displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot)-VIXS$vixs_id: $failCount($slot) fails"
+	    if {$failCount($index) > 0 } {
+               displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot)-VIXS$vixs_id: $failCount($index) fails"
+               set failCountTotal($slot) [expr $failCountTotal($slot) + 1]
 	    }
     }
   }
 
+  displayDebug ""
+  displayDebug "########## SUMMARY ##########"
   foreach slot $cnob_slots {
-  	if {$failCount($slot) > 0 } {
+  	if {$failCountTotal($slot) > 0 } {
           displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot): FAIL"
   	} else {
           displayDebug "### SSH-SLOT$slot-SN-$listSerialNumber($slot): PASS"
@@ -147,6 +154,7 @@ set port ""
 set logFile "error.log"
 array set listSerialNumber {}
 array set failCount {}
+array set failCountTotal {}
 #board configuration
 set pwrswitch 2
 set numberOfPowerCycle 15
@@ -191,7 +199,7 @@ if {[catch {array set options [cmdline::getoptions ::argv $parameters $usage]}]}
 		assy {
 			displayDebug "### ASSY Test"
 			set options(vixs) 4
-			set boot_time     1200
+			set boot_time     600
 		}
 		default {
 			displayDebug "### NTSC Test"
@@ -239,6 +247,7 @@ for {set i 0} {$i < $options(vixs) } {incr i 1} {
 
 foreach slot $cnob_slots {
 	set failCount($slot) 0
+	set failCountTotal($slot) 0
 	foreach vixs_id $vixs_ids {
 		set failCount($slot,$vixs_id) 0
 	}
